@@ -1,0 +1,13 @@
+{
+  "name": "cashnote-download-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Device-aware CashNote Windows download gateway and GitHub Release download statistics API.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

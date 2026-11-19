@@ -1,0 +1,25 @@
+CASHNOTE WEBSITE v2.2 — ABOUT, VISUALS & MOTION REFINEMENT
+
+HOME PAGE
+- Removed application screenshots from the hero, transaction highlight and “A closer look” sections.
+- Replaced them with original HTML/CSS illustrations: monthly finance overview, transaction ledger, budget progress and reporting chart.
+- Sample values in the illustrations are explicitly labelled as illustrative; they are not presented as real user data.
+
+ABOUT PAGE
+- Rebuilt the page into an editorial introduction and creator story.
+- Added a custom faceless creator illustration with CashNote-aligned violet and teal lighting.
+- Added product principles and a clearer local-storage/privacy note.
+
+MOTION
+- Added GSAP 3.12.5 and ScrollTrigger for scroll reveals, staggered cards, subtle parallax and a page progress line.
+- Added an IntersectionObserver fallback if CDN scripts cannot load.
+- Respects prefers-reduced-motion.
+
+OTHER PAGES
+- Features page retains actual product screenshots as detailed product evidence.
+- Download API, mobile/Windows gating, GitHub release counts and Render Blueprint are unchanged from v2.1.
+
+DEPLOYMENT
+- Static site: same Render Blueprint deployment process.
+- API service: unchanged.
+- No build command or frontend package installation required.

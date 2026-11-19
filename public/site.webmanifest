@@ -1,0 +1,12 @@
+{
+  "name": "CashNote — Personal Finance for Windows",
+  "short_name": "CashNote",
+  "description": "A private, local-first personal finance workspace for Windows.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101011",
+  "theme_color": "#101011",
+  "icons": [
+    { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

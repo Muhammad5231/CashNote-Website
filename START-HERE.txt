@@ -1,0 +1,26 @@
+CASHNOTE WEBSITE v2.2 — START HERE
+
+This project contains:
+1) A public three-page Render Static Site.
+2) A small Node.js download gateway that blocks mobile/non-Windows download requests.
+3) A live installer download counter sourced from GitHub Releases.
+4) A screenshot-free CSS/HTML hero and “A closer look” visual system on the Home page.
+5) A redesigned About page with a custom faceless creator illustration.
+6) GSAP + ScrollTrigger scroll animations, with a native fallback and reduced-motion support.
+
+QUICK START
+1. Create a public GitHub repo for Windows releases (default: Muhammad5231/CashNote-Releases).
+2. Publish a Windows Setup EXE release asset named like CashNote-Setup-1.3.1-Windows-x64.exe.
+3. Push this website project to your website GitHub repo.
+4. Render → New → Blueprint → connect the repo → deploy both services.
+5. Check API env vars and custom domain settings in DEPLOYMENT-GUIDE.md.
+
+IMPORTANT
+- GitHub Releases asset downloads power the counter. It is not a unique-person or install counter.
+- The website and gateway block normal mobile download requests; public GitHub assets can still be opened directly if their URL is shared.
+- Render Free API service can sleep after inactivity; the first stats/download request may take longer to wake it.
+- No installer EXE is included in this website ZIP. Upload the tested Setup EXE to GitHub Releases, not into public/.
+- GSAP and ScrollTrigger load from cdnjs. Content reveals fall back to IntersectionObserver if the CDN does not load.
+- Product screenshots are kept on the Features page; the Home hero and “A closer look” use custom HTML/CSS visuals.
+
+Read DEPLOYMENT-GUIDE.md and RELEASE-PUBLISHING-GUIDE.md before publishing.
