@@ -2,3 +2,5 @@ User-agent: *
 Allow: /
 
 Sitemap: https://cashnote-website.onrender.com/sitemap.xml
+
+Disallow: /admin/

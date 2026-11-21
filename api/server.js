@@ -1,6 +1,9 @@
 'use strict';
 
 const http = require('node:http');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
 
 const PORT = Number(process.env.PORT || 10000);
 const GITHUB_OWNER = (process.env.GITHUB_OWNER || 'Muhammad5231').trim();
@@ -10,6 +13,53 @@ const CACHE_TTL_MS = Math.max(60, Number(process.env.STATS_CACHE_SECONDS || 180)
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://cashnote-website.onrender.com,http://localhost:8080,http://127.0.0.1:8080')
   .split(',').map((value) => value.trim()).filter(Boolean);
 const INSTALLER_PATTERN = /^CashNote-Setup-.*-Windows-x64\.exe$/i;
+
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || '';
+const DATA_DIR = process.env.CASHNOTE_DATA_DIR || '/var/data/cashnote-site';
+const MEDIA_DIR = path.join(DATA_DIR, 'media');
+const CONTENT_FILE = path.join(DATA_DIR, 'content.json');
+const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || 'https://cashnote-download-api.onrender.com').replace(/\/$/, '');
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+const loginAttempts = new Map();
+const defaultContent = { heroTitle: 'Your money,', heroAccent: 'in focus.', heroCopy: 'A more considered way to manage everyday money. Track income and expenses, plan budgets, reuse common entries and review reports — with your records kept on your computer.', featuresTitle: 'Personal finance, with more clarity.', aboutTitle: 'Built independently. Made with intention.', tourCaption: 'Explore the CashNote desktop experience.' , media: {} };
+fs.mkdirSync(MEDIA_DIR, { recursive: true });
+function readContent() {
+  try { const value = JSON.parse(fs.readFileSync(CONTENT_FILE, 'utf8')); return { ...defaultContent, ...value, media: { ...defaultContent.media, ...(value.media || {}) } }; }
+  catch (_) { return { ...defaultContent }; }
+}
+function writeContent(value) { const temp = `${CONTENT_FILE}.${process.pid}.tmp`; fs.writeFileSync(temp, JSON.stringify(value, null, 2), { mode: 0o600 }); fs.renameSync(temp, CONTENT_FILE); }
+function safeEqual(a, b) { const aa = Buffer.from(String(a)); const bb = Buffer.from(String(b)); return aa.length === bb.length && crypto.timingSafeEqual(aa, bb); }
+function sign(value) { return crypto.createHmac('sha256', SESSION_SECRET).update(value).digest('hex'); }
+function sessionCookie(req) { return String(req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith('cashnote_admin='))?.slice('cashnote_admin='.length) || ''; }
+function validSession(req) {
+  if (!SESSION_SECRET) return false;
+  const token = sessionCookie(req); const parts = token.split('.');
+  if (parts.length !== 2 || !/^\d{10,16}$/.test(parts[0])) return false;
+  const expires = Number(parts[0]); if (!Number.isFinite(expires) || expires < Date.now()) return false;
+  return safeEqual(parts[1], sign(parts[0]));
+}
+function adminCookie(req, value, maxAge = SESSION_TTL_MS / 1000) {
+  const secure = req.headers['x-forwarded-proto'] === 'https';
+  const sameSite = 'Strict';
+  return `cashnote_admin=${value}; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
+}
+function isSameOrigin(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  try { const u = new URL(origin); return u.host === (req.headers.host || '') || ALLOWED_ORIGINS.includes(origin); } catch (_) { return false; }
+}
+function readBody(req, limit = 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    const chunks = []; let size = 0;
+    req.on('data', chunk => { size += chunk.length; if (size > limit) { reject(new Error('Request is too large.')); req.destroy(); } else chunks.push(chunk); });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+function adminRequired(req, res) { if (!validSession(req)) { sendJson(res, 401, { error: 'Your admin session has expired. Please sign in again.' }); return false; } return true; }
+function safeMediaName(name) { return /^[a-f0-9-]{36}\.(?:jpg|png|webp|mp4|webm)$/.test(name); }
 
 let snapshotCache = { expiresAt: 0, value: null };
 let snapshotPromise = null;
@@ -34,8 +84,9 @@ function applyCors(req, res) {
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Accept, Content-Type');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
 }
 
@@ -164,6 +215,82 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && url.pathname === '/health') {
     return sendJson(res, 200, { ok: true, service: 'cashnote-download-gateway' });
+  }
+  if (req.method === 'GET' && (url.pathname === '/admin' || url.pathname === '/admin/')) {
+    const file = path.join(__dirname, 'admin-ui', 'index.html');
+    const body = fs.readFileSync(file);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' });
+    return res.end(body);
+  }
+  if (req.method === 'GET' && url.pathname === '/admin/admin.js') {
+    const file = path.join(__dirname, 'admin-ui', 'admin.js');
+    const body = fs.readFileSync(file);
+    res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' });
+    return res.end(body);
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/site-content') {
+    const content = readContent();
+    return sendJson(res, 200, { ...content, media: Object.fromEntries(Object.entries(content.media || {}).map(([k, v]) => [k, v])) });
+  }
+
+  if (req.method === 'GET' && url.pathname.startsWith('/media/')) {
+    const name = path.basename(url.pathname.slice('/media/'.length));
+    if (!safeMediaName(name)) { res.writeHead(404); return res.end(); }
+    const file = path.join(MEDIA_DIR, name);
+    if (!fs.existsSync(file)) { res.writeHead(404); return res.end(); }
+    const ext = path.extname(name).toLowerCase();
+    const type = ({ '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.mp4': 'video/mp4', '.webm': 'video/webm' })[ext];
+    res.writeHead(200, { 'Content-Type': type, 'Content-Length': fs.statSync(file).size, 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' });
+    return fs.createReadStream(file).pipe(res);
+  }
+
+  if (url.pathname.startsWith('/api/admin/')) {
+    if (!isSameOrigin(req)) return sendJson(res, 403, { error: 'Request origin is not allowed.' });
+    if (req.method === 'POST' && url.pathname === '/api/admin/login') {
+      if (ADMIN_PASSWORD.length < 16 || SESSION_SECRET.length < 32) return sendJson(res, 503, { error: 'Admin is not securely configured. Set an ADMIN_PASSWORD of at least 16 characters and an ADMIN_SESSION_SECRET of at least 32 characters in Render.' });
+      const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+      const attempt = loginAttempts.get(ip) || { count: 0, until: 0 };
+      if (attempt.until > Date.now()) return sendJson(res, 429, { error: 'Too many attempts. Try again in 15 minutes.' });
+      let body; try { body = JSON.parse((await readBody(req, 4096)).toString('utf8')); } catch (_) { return sendJson(res, 400, { error: 'Invalid login request.' }); }
+      if (!safeEqual(body.password || '', ADMIN_PASSWORD)) {
+        attempt.count += 1; if (attempt.count >= 5) { attempt.count = 0; attempt.until = Date.now() + 15 * 60 * 1000; }
+        loginAttempts.set(ip, attempt); return sendJson(res, 401, { error: 'Incorrect admin password.' });
+      }
+      loginAttempts.delete(ip);
+      const expiry = String(Date.now() + SESSION_TTL_MS);
+      res.setHeader('Set-Cookie', adminCookie(req, `${expiry}.${sign(expiry)}`));
+      return sendJson(res, 200, { ok: true });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/admin/session') return validSession(req) ? sendJson(res, 200, { ok: true }) : sendJson(res, 401, { error: 'Not signed in.' });
+    if (req.method === 'POST' && url.pathname === '/api/admin/logout') {
+      res.setHeader('Set-Cookie', adminCookie(req, '', 0)); return sendJson(res, 200, { ok: true });
+    }
+    if (!adminRequired(req, res)) return;
+    if (req.method === 'GET' && url.pathname === '/api/admin/content') return sendJson(res, 200, { content: readContent() });
+    if (req.method === 'GET' && url.pathname === '/api/admin/backup') return sendJson(res, 200, { schemaVersion: 1, exportedAt: new Date().toISOString(), content: readContent() });
+    if (req.method === 'PUT' && url.pathname === '/api/admin/content') {
+      let body; try { body = JSON.parse((await readBody(req, 32 * 1024)).toString('utf8')); } catch (_) { return sendJson(res, 400, { error: 'Invalid content payload.' }); }
+      const allowed = ['heroTitle', 'heroAccent', 'heroCopy', 'featuresTitle', 'aboutTitle', 'tourCaption'];
+      const current = readContent();
+      for (const key of allowed) if (typeof body.content?.[key] === 'string') current[key] = body.content[key].trim().slice(0, key === 'heroCopy' ? 500 : 220);
+      writeContent(current); return sendJson(res, 200, { ok: true });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/admin/upload') {
+      let body; try { body = JSON.parse((await readBody(req, 70 * 1024 * 1024)).toString('utf8')); } catch (_) { return sendJson(res, 400, { error: 'Invalid upload payload.' }); }
+      const kind = body.kind; const imageKinds = ['heroImage', 'galleryTransactions', 'galleryProfiles', 'galleryPreferences']; const allowedTypes = kind === 'tourVideo' ? ['video/mp4', 'video/webm'] : imageKinds.includes(kind) ? ['image/jpeg', 'image/png', 'image/webp'] : [];
+      const mime = String(body.mime || ''); if (!allowedTypes.includes(mime)) return sendJson(res, 415, { error: 'Unsupported file type.' });
+      const max = kind === 'tourVideo' ? 50 * 1024 * 1024 : 8 * 1024 * 1024;
+      let buffer; try { buffer = Buffer.from(String(body.data || ''), 'base64'); } catch (_) { return sendJson(res, 400, { error: 'Invalid file data.' }); }
+      if (!buffer.length || buffer.length > max) return sendJson(res, 413, { error: `File is empty or exceeds ${Math.round(max / 1024 / 1024)} MB.` });
+      const signatures = { 'image/png': buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])), 'image/jpeg': buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff, 'image/webp': buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP', 'video/mp4': buffer.toString('ascii', 4, 8) === 'ftyp', 'video/webm': buffer.subarray(0, 4).equals(Buffer.from([0x1a,0x45,0xdf,0xa3])) };
+      if (!signatures[mime]) return sendJson(res, 415, { error: 'File contents do not match the selected media type.' });
+      const ext = ({ 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'video/mp4': '.mp4', 'video/webm': '.webm' })[mime];
+      const filename = `${crypto.randomUUID()}${ext}`; fs.writeFileSync(path.join(MEDIA_DIR, filename), buffer, { flag: 'wx', mode: 0o644 });
+      const urlValue = `${PUBLIC_API_URL}/media/${filename}`; const content = readContent(); content.media = { ...(content.media || {}), [kind]: urlValue }; writeContent(content);
+      return sendJson(res, 201, { ok: true, url: urlValue });
+    }
+    return sendJson(res, 404, { error: 'Admin endpoint not found.' });
   }
 
   if (req.method === 'GET' && url.pathname === '/api/download-stats') {

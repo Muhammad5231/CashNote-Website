@@ -1,7 +1,7 @@
 {
   "name": "CashNote — Personal Finance for Windows",
   "short_name": "CashNote",
-  "description": "A private, local-first personal finance workspace for Windows.",
+  "description": "A local-first Windows personal finance workspace with optional user-configured AI assistance.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#101011",

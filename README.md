@@ -1,8 +1,8 @@
-# CashNote Website v2.1 — Desktop Download Gate & Live Release Counts
+# CashNote Website v2.5 — CashNote v1.9.7 Product Update
 
 A responsive three-page public product website for CashNote, with a separate lightweight Node.js download gateway. The public pages remain a Render Static Site for fast, crawlable SEO pages. A second Render Web Service provides device checks and reads official download totals from GitHub Releases.
 
-## What's new in v2.1
+## Baseline download gateway (introduced in v2.1)
 
 - Mobile and tablet visitors see a clear Windows-desktop-only message; download buttons are disabled on mobile.
 - The download gateway checks the request User-Agent again and rejects mobile and non-Windows requests.
@@ -21,7 +21,7 @@ The website and gateway block normal mobile-device download requests. GitHub Rel
 ## Project structure
 
 ```text
-CashNote-Website-Ready-for-Render/
+CashNote-Website-v2.3-CashNote-1.9.7-Product-Update/
   api/
     server.js                # Device-aware download gateway + GitHub release stats
     package.json             # Node.js start script; no third-party runtime packages
@@ -56,7 +56,7 @@ For each CashNote version, publish a GitHub Release and upload the Windows Setup
 
 Example:
 
-`CashNote-Setup-1.3.1-Windows-x64.exe`
+`CashNote-Setup-1.9.7-Windows-x64.exe`
 
 The actual installer file is not stored in this website repository. This keeps the website repo small and allows GitHub to deliver the large installer binary. GitHub documents a per-release asset size limit of less than 2 GiB and no release bandwidth quota: <https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases>.
 
@@ -155,3 +155,27 @@ The existing pages include separate titles/descriptions, canonical links, Open G
 ### Motion dependency
 
 GSAP and ScrollTrigger are loaded from cdnjs. If you prefer not to rely on a third-party CDN, vendor the two minified files under `public/assets/vendor/` and update the script URLs in all three HTML pages. The website itself remains static and the fallback reveal system works without GSAP.
+
+
+## What's new in website v2.3
+
+- Updated product information for CashNote Desktop v1.9.7.
+- Added a redesigned CashNote AI overview with a CSS-built conversation illustration (not a real screenshot or live account data).
+- Documented guided Q&A for missing transaction/template/budget information, AI proposals and the required user confirmation.
+- Clarified the simplified AI experience: one temporary conversation, five quick actions, and expanded full-screen mode; no conversation archive or detached AI window.
+- Added clear AI requirements and data-sharing disclosure: user API key, internet connection, chosen OpenAI-compatible provider, and only relevant context sent when the user invokes AI.
+- Updated the Features page with local profile, report, theme, activity log and storage-migration details.
+- Updated storage documentation for `%APPDATA%\CashNote` and the migration path from legacy Nivora storage.
+- Refined the Home, Features and About layouts with responsive editorial sections, visual cards and improved mobile breakpoints.
+- Updated SoftwareApplication structured data and sitemap last-modified dates.
+- Download gateway, mobile/Windows device gate, GitHub release-asset download counts and Render Blueprint remain compatible with the v2.2 deployment setup.
+
+The website describes the v1.9.7 product source. The download button still redirects to the latest installer actually published in the configured GitHub Releases repository; publish a matching v1.9.7 installer asset before expecting it to download that build.
+
+
+## v2.5 website CMS
+- Private admin: `/admin/`
+- Content and media stored as JSON/files on Render Persistent Disk (no external database).
+- Set `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` in Render.
+- Setup and security notes: `ADMIN-SETUP-GUIDE.md`.
+- A product-tour video is optional; the animated motion-graphic preview is shown until a video is uploaded.

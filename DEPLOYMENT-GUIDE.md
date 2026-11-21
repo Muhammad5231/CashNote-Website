@@ -1,4 +1,4 @@
-# CashNote Website v2.1 — Render Deployment Guide
+# CashNote Website v2.5 — Render Deployment Guide
 
 ## What you are deploying
 
@@ -17,7 +17,7 @@ Create a public releases repository. The default is `Muhammad5231/CashNote-Relea
 
 Publish a Release with a Windows installer asset named like:
 
-`CashNote-Setup-1.3.1-Windows-x64.exe`
+`CashNote-Setup-1.9.7-Windows-x64.exe`
 
 The matching rule is `CashNote-Setup-*-Windows-x64.exe`. Keep release assets public so the gateway can resolve the public browser download URL and the website can read GitHub's official `download_count` metadata.
 
@@ -90,6 +90,19 @@ After the website's actual domain is live:
 
 Sitemap submission does not guarantee indexing or a specific ranking position.
 
-## v2.2 design update
+## v2.2 design update (retained)
 
-The Home hero and Home “A closer look” section now use original CSS/HTML illustrations rather than application screenshots. The creator/About page uses a stylized faceless illustration. Product screenshots remain on the Features page only. Scroll animations use GSAP 3.12.5 and ScrollTrigger from cdnjs, with a native IntersectionObserver fallback and `prefers-reduced-motion` support. No build step is required for the static website.
+The Home hero and Home “A closer look” section use original CSS/HTML illustrations rather than application screenshots. The creator/About page uses a stylized faceless illustration. Product screenshots remain on the Features page only. Scroll animations use GSAP 3.12.5 and ScrollTrigger from cdnjs, with a native IntersectionObserver fallback and `prefers-reduced-motion` support. No build step is required for the static website.
+
+
+## Website v2.4 product update (retained)
+
+The website now describes CashNote Desktop v1.9.7, including optional CashNote AI, guided Q&A for incomplete requests, user-confirmed proposals, five quick actions, and the CashNote-branded local data folder. It also explains that the AI provider receives prompts and relevant finance context only when the user invokes AI.
+
+Before public promotion, make sure the tested `CashNote-Setup-1.9.7-Windows-x64.exe` is published as a public asset in the configured `CashNote-Releases` repository. The website API deliberately follows the latest published matching GitHub Release asset; it does not hard-code or fabricate a version. Until v1.9.7 is published there, the download CTA can resolve to the latest older published asset.
+
+After pushing the website update, verify the Home, Features and About pages, check mobile download blocking, check `/api/download-stats`, and submit the updated sitemap in Google Search Console.
+
+
+## Website admin and media CMS (v2.5)
+The API now serves the private admin at `https://cashnote-download-api.onrender.com/admin/` and stores editable copy plus uploaded screenshots/video on a Render Persistent Disk. Apply the updated `render.yaml`, set `ADMIN_PASSWORD` (minimum 16 characters), and keep `ADMIN_SESSION_SECRET` (minimum 32 characters) configured. See `ADMIN-SETUP-GUIDE.md`. The API service uses Render Starter + 1 GB disk so CMS edits survive redeploys; this is a paid Render resource. No separate database is used.

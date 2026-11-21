@@ -1,0 +1,30 @@
+CASHNOTE WEBSITE v2.3 — CASHNOTE v1.9.7 PRODUCT UPDATE
+
+HOME
+- Added v1.9.7 release update chip and current product messaging.
+- Added an original CSS-built CashNote AI conversation visual showing guided Q&A and a reviewed proposal.
+- Added release update cards for guided AI, simpler chat and CashNote-branded storage.
+- Expanded feature overview and FAQs with AI configuration, data-sharing and confirmation details.
+
+FEATURES
+- Rebuilt the page around the v1.9.7 product story and clearer section navigation.
+- Documented transactions, templates, budgets, reports, multiple profiles and appearance/activity tools.
+- Added CashNote AI capabilities, guided Q&A, review-before-save workflow and a CSS interface illustration.
+- Documented bring-your-own API key, internet requirement, provider costs/limits and AI data handling.
+- Added CashNote local storage path and legacy Nivora migration notes.
+
+ABOUT & PRIVACY
+- Expanded independent creator story to reflect the current product.
+- Added a dedicated AI data-use explanation.
+- Added Nivora-to-CashNote storage migration information.
+- Retained clear note that local files are not encrypted at rest.
+
+DESIGN
+- New responsive feature storytelling, visual mockups, cards and mobile layout adjustments.
+- Existing CashNote graphite/lavender/teal identity retained and refined.
+- Scroll reveals continue to use GSAP with IntersectionObserver fallback and prefers-reduced-motion support.
+
+DOWNLOAD & DEPLOYMENT
+- Mobile/device download gate and dynamic GitHub Releases API are unchanged.
+- Download CTA resolves to the latest published matching Setup asset. Publish the v1.9.7 installer in CashNote-Releases before the website will deliver that specific release.
+- Existing Render Blueprint and two-service deployment architecture preserved.

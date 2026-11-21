@@ -1,0 +1,23 @@
+CASHNOTE WEBSITE v2.4 — HERO & GLOBAL UI POLISH
+
+This update refines the v2.3 website without changing the existing Render service architecture or download API.
+
+DESIGN CHANGES
+- Reworked the home hero hierarchy, spacing, typography, CTA proportions and trust indicators.
+- Refined the finance dashboard preview with improved spacing, surface depth and responsive sizing.
+- Adjusted floating visual callouts to reduce collisions at common desktop/tablet/mobile widths.
+- Tightened the brand lockup: CashNote wordmark and YOUR MONEY, IN FOCUS tagline now have a compact, deliberate vertical gap and improved line-height.
+- Applied the shared logo spacing adjustment across Home, Features, About and 404 page headers/footers wherever the shared brand styles are used.
+- Added responsive overrides for tablet and mobile hero layouts.
+
+PRESERVED
+- CashNote Desktop v1.9.7 product messaging and feature content.
+- Existing download API, GitHub release lookup and live download counter.
+- Existing Render two-service setup, canonical URLs, sitemap, robots rules and page routes.
+- Existing screenshots, brand assets and page content.
+
+VALIDATION
+- JavaScript syntax checks passed for site.js and api/server.js.
+- HTML structure, local asset references, internal page links and sitemap entries checked.
+- CSS parsed for syntax errors.
+- Browser screenshot capture was attempted but Chromium did not complete in this environment; perform a visual check after deployment at desktop and mobile widths.

@@ -34,6 +34,8 @@
   const proofCards = Array.from(document.querySelectorAll('[data-download-proof]'));
   const countNotes = Array.from(document.querySelectorAll('[data-download-count-note]'));
   const releaseLinks = Array.from(document.querySelectorAll('[data-release-link]'));
+  const latestVersionNodes = Array.from(document.querySelectorAll('[data-latest-version]'));
+  const latestDateNodes = Array.from(document.querySelectorAll('[data-latest-release-date]'));
   const userAgent = navigator.userAgent || '';
   const platform = navigator.userAgentData?.platform || navigator.platform || '';
   const isIPadDesktopMode = platform === 'MacIntel' && navigator.maxTouchPoints > 1;
@@ -109,10 +111,15 @@
 
       if (data.available && Number.isFinite(Number(data.downloads))) {
         const count = Number(data.downloads);
-        countNodes.forEach((node) => { node.textContent = new Intl.NumberFormat('en-IN').format(count); });
+        countNodes.forEach((node) => { node.textContent = new Intl.NumberFormat('en-IN').format(count); node.classList.add('count-ready'); });
         detailNodes.forEach((node) => {
           const version = data.latest?.version ? ` · Latest v${data.latest.version}` : '';
           node.textContent = `GitHub asset downloads across up to 100 recent releases${version}. Repeat downloads are included.`;
+        });
+        latestVersionNodes.forEach((node) => { node.textContent = data.latest?.version ? `v${data.latest.version}` : 'Latest release'; });
+        latestDateNodes.forEach((node) => {
+          const date = data.latest?.publishedAt ? new Date(data.latest.publishedAt) : null;
+          node.textContent = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
         });
         releaseLinks.forEach((link) => {
           if (data.latest?.releaseUrl) {
@@ -146,6 +153,7 @@
         setInstallerStatus('The download service is waking up or temporarily unavailable. Please try again shortly.');
       }
       detailNodes.forEach((node) => { node.textContent = 'Live download totals are temporarily unavailable.'; });
+      latestVersionNodes.forEach((node) => { node.textContent = 'Release status unavailable'; });
       // Render Free web services can spin down after inactivity. Retry gently while the service wakes.
       if (attempt < 5) window.setTimeout(() => loadDownloadStats(attempt + 1), 10000);
     } finally {
@@ -247,3 +255,17 @@
   }
 
 })();
+
+
+  // Optional product video: when no uploaded clip exists, the animated CSS preview remains visible.
+  (async () => {
+    const frame = document.querySelector('[data-tour-frame]');
+    const video = document.querySelector('[data-tour-video]');
+    if (!frame || !video) return;
+    try {
+      const response = await fetch(`${apiBase}/api/site-content`, { cache: 'no-store' });
+      if (!response.ok) return;
+      const content = await response.json();
+      if (content.media?.tourVideo) { video.src = content.media.tourVideo; video.hidden = false; frame.querySelector('.tour-ambient')?.setAttribute('hidden',''); frame.querySelector('.tour-caption')?.setAttribute('hidden',''); }
+    } catch (_) { /* Motion preview is the intentional offline fallback. */ }
+  })();
