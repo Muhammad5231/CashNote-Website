@@ -1,1 +1,108 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="cashnote-download-api" content="https://cashnote-download-api.onrender.com"><title>CashNote Site Admin</title><link rel="stylesheet" href="https://cashnote-website.onrender.com/assets/site.css"></head><body class="admin-page"><main class="admin-shell"><div class="admin-toolbar"><a class="brand" href="/"><img src="https://cashnote-website.onrender.com/assets/cashnote-app-icon.png" width="38" height="38" alt=""><span><span class="brand-word">Cash<span>Note</span></span><span class="brand-tag">SITE ADMIN</span></span></a><button id="logout" hidden>Sign out</button></div><section class="admin-card" id="login-card"><h1>Website content</h1><p>Sign in to update public website copy and upload product media. This panel is private and is not indexed.</p><form id="login-form" class="admin-form"><label>Admin password<input id="password" type="password" autocomplete="current-password" required minlength="16"></label><button type="submit">Sign in securely</button><div class="admin-status" id="login-status" role="status"></div></form></section><section class="admin-card" id="editor-card" hidden><div class="admin-toolbar"><h1>Manage website content</h1><button type="button" id="backup">Download content backup</button></div><p>Edits are saved to the API service's persistent disk. Public pages read the saved content automatically.</p><form id="content-form" class="admin-form"><div class="admin-grid"><label>Home hero heading<input name="heroTitle" maxlength="90"></label><label>Hero accent line<input name="heroAccent" maxlength="60"></label></div><label>Hero description<textarea name="heroCopy" maxlength="500"></textarea></label><div class="admin-grid"><label>Features page main heading<input name="featuresTitle" maxlength="100"></label><label>About page main heading<input name="aboutTitle" maxlength="100"></label></div><label>Product tour caption<textarea name="tourCaption" maxlength="220"></textarea></label><button type="submit">Save website text</button><label>Restore text backup (JSON)<input id="restore-file" type="file" accept="application/json,.json"></label><button type="button" id="restore">Restore backup</button><div class="admin-status" id="save-status" role="status"></div></form><hr style="border:0;border-top:1px solid #39313f;margin:24px 0"><h2 style="font-size:18px">Photos and product video</h2><p class="admin-help">Images: JPG, PNG, WEBP (max 8 MB). Video: MP4 or WEBM (max 50 MB). Use compressed web-ready files.</p><div class="admin-grid"><form class="admin-form admin-upload" data-upload="heroImage"><label>Product tour poster image<input type="file" accept="image/jpeg,image/png,image/webp" required></label><button type="submit">Upload image</button><div class="admin-status" role="status"></div></form><form class="admin-form admin-upload" data-upload="tourVideo"><label>Product walkthrough video<input type="file" accept="video/mp4,video/webm" required></label><button type="submit">Upload video</button><div class="admin-status" role="status"></div></form></div><div class="admin-grid" style="margin-top:14px"><form class="admin-form admin-upload" data-upload="galleryTransactions"><label>Transactions screenshot<input type="file" accept="image/jpeg,image/png,image/webp" required></label><button type="submit">Upload screenshot</button><div class="admin-status" role="status"></div></form><form class="admin-form admin-upload" data-upload="galleryProfiles"><label>Profiles screenshot<input type="file" accept="image/jpeg,image/png,image/webp" required></label><button type="submit">Upload screenshot</button><div class="admin-status" role="status"></div></form><form class="admin-form admin-upload" data-upload="galleryPreferences"><label>Preferences screenshot<input type="file" accept="image/jpeg,image/png,image/webp" required></label><button type="submit">Upload screenshot</button><div class="admin-status" role="status"></div></form></div><p class="admin-help" style="margin-top:18px">Security: admin session uses a signed HttpOnly cookie. Never share your admin password. Back up the Render disk before replacing or deleting media.</p></section></main><script src="/admin/admin.js" defer></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="cashnote-download-api" content="https://cashnote-download-api.onrender.com">
+  <meta name="cashnote-site-url" content="https://cashnote-website.onrender.com">
+  <title>CashNote Website Admin</title>
+  <link rel="stylesheet" href="https://cashnote-website.onrender.com/assets/site.css">
+</head>
+<body class="admin-page">
+  <main class="admin-shell">
+    <div class="admin-toolbar">
+      <a class="brand" href="https://cashnote-website.onrender.com/">
+        <img src="https://cashnote-website.onrender.com/assets/cashnote-app-icon.png" width="38" height="38" alt="CashNote">
+        <span><span class="brand-word">Cash<span>Note</span></span><span class="brand-tag">WEBSITE ADMIN</span></span>
+      </a>
+      <button id="logout" type="button" hidden>Sign out</button>
+    </div>
+
+    <section class="admin-card" id="login-card">
+      <span class="eyebrow">PRIVATE CONTENT MANAGER</span>
+      <h1>Website content</h1>
+      <p>Sign in to edit public website text and media paths. Files are stored in your GitHub website repository; this admin service does not store uploads.</p>
+      <form id="login-form" class="admin-form">
+        <label>Admin password<input id="password" type="password" autocomplete="current-password" required minlength="16"></label>
+        <button type="submit">Sign in securely</button>
+        <div class="admin-status" id="login-status" role="status" aria-live="polite"></div>
+      </form>
+    </section>
+
+    <section class="admin-card" id="editor-card" hidden>
+      <div class="admin-toolbar admin-editor-toolbar">
+        <div><span class="eyebrow">GITHUB-BACKED CMS</span><h1>Manage website content</h1><p id="repository-note">Loading repository settings…</p></div>
+        <button type="button" id="backup">Download JSON backup</button>
+      </div>
+
+      <div class="admin-notice"><strong>How this works</strong><span>Edit text or enter a media path below. Saving creates a commit in <code>CashNote-Website</code>. Render then redeploys the static website. No Render Disk or database is used.</span></div>
+
+      <form id="content-form" class="admin-form">
+        <section class="admin-section">
+          <h2>Home and page text</h2>
+          <div class="admin-grid">
+            <label>Home hero heading<input name="heroTitle" maxlength="90" required></label>
+            <label>Hero accent line<input name="heroAccent" maxlength="60" required></label>
+          </div>
+          <label>Hero description<textarea name="heroCopy" maxlength="500" required></textarea></label>
+          <div class="admin-grid">
+            <label>Features page heading<input name="featuresTitle" maxlength="120" required></label>
+            <label>About page heading<input name="aboutTitle" maxlength="120" required></label>
+          </div>
+          <label>Product tour caption<textarea name="tourCaption" maxlength="220" required></textarea></label>
+        </section>
+
+        <section class="admin-section">
+          <div class="admin-section-head"><div><h2>Media paths</h2><p>First add the files to the website repository and push them to GitHub. Then paste their website path here.</p></div><span class="admin-pill">PATH ONLY</span></div>
+          <div class="admin-path-grid">
+            <label class="admin-path-field">
+              Product tour poster image
+              <input name="media.heroImage" type="text" inputmode="url" placeholder="/assets/images/product-poster.webp" autocomplete="off">
+              <small>JPG, PNG, WEBP or AVIF · Optional</small>
+              <span class="admin-preview"><img data-preview="heroImage" alt="Product tour poster preview" hidden><em data-preview-empty="heroImage">No custom poster path set. The animated preview will be used.</em></span>
+            </label>
+            <label class="admin-path-field">
+              Product walkthrough video
+              <input name="media.tourVideo" type="text" inputmode="url" placeholder="/assets/videos/product-tour.mp4" autocomplete="off">
+              <small>MP4 or WEBM · Optional · Keep large videos on YouTube</small>
+              <span class="admin-preview"><video data-preview="tourVideo" controls playsinline preload="metadata" hidden></video><em data-preview-empty="tourVideo">No video path set. The motion graphic remains visible.</em></span>
+            </label>
+            <label class="admin-path-field">
+              Transactions screenshot
+              <input name="media.galleryTransactions" type="text" inputmode="url" placeholder="/assets/images/transactions.webp" autocomplete="off">
+              <small>Image path inside public/assets/</small>
+              <span class="admin-preview"><img data-preview="galleryTransactions" alt="Transactions screenshot preview" hidden><em data-preview-empty="galleryTransactions">Using the bundled screenshot.</em></span>
+            </label>
+            <label class="admin-path-field">
+              Local profiles screenshot
+              <input name="media.galleryProfiles" type="text" inputmode="url" placeholder="/assets/images/profiles.webp" autocomplete="off">
+              <small>Image path inside public/assets/</small>
+              <span class="admin-preview"><img data-preview="galleryProfiles" alt="Profiles screenshot preview" hidden><em data-preview-empty="galleryProfiles">Using the bundled screenshot.</em></span>
+            </label>
+            <label class="admin-path-field">
+              Preferences screenshot
+              <input name="media.galleryPreferences" type="text" inputmode="url" placeholder="/assets/images/preferences.webp" autocomplete="off">
+              <small>Image path inside public/assets/</small>
+              <span class="admin-preview"><img data-preview="galleryPreferences" alt="Preferences screenshot preview" hidden><em data-preview-empty="galleryPreferences">Using the bundled screenshot.</em></span>
+            </label>
+          </div>
+        </section>
+
+        <div class="admin-save-row">
+          <button type="submit" id="save-content">Save website changes</button>
+          <span id="save-status" class="admin-status" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+
+      <section class="admin-section admin-backup-section">
+        <h2>Backup and restore</h2>
+        <p>Download a copy of the current website text and media paths, or restore a previous JSON backup.</p>
+        <div class="admin-restore-row"><input id="restore-file" type="file" accept="application/json,.json"><button type="button" id="restore">Restore backup</button></div>
+      </section>
+      <p class="admin-security-note">Security: the GitHub token stays on the Render server and is never sent to this browser. The admin session uses a signed HttpOnly cookie. Never share your admin password or token.</p>
+    </section>
+  </main>
+  <script src="/admin/admin.js" defer></script>
+</body>
+</html>

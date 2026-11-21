@@ -4,6 +4,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { createCmsStore } = require('./lib/cms-store');
 
 const PORT = Number(process.env.PORT || 10000);
 const GITHUB_OWNER = (process.env.GITHUB_OWNER || 'Muhammad5231').trim();
@@ -17,19 +18,15 @@ const INSTALLER_PATTERN = /^CashNote-Setup-.*-Windows-x64\.exe$/i;
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || '';
-const DATA_DIR = process.env.CASHNOTE_DATA_DIR || '/var/data/cashnote-site';
-const MEDIA_DIR = path.join(DATA_DIR, 'media');
-const CONTENT_FILE = path.join(DATA_DIR, 'content.json');
-const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || 'https://cashnote-download-api.onrender.com').replace(/\/$/, '');
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 const loginAttempts = new Map();
-const defaultContent = { heroTitle: 'Your money,', heroAccent: 'in focus.', heroCopy: 'A more considered way to manage everyday money. Track income and expenses, plan budgets, reuse common entries and review reports — with your records kept on your computer.', featuresTitle: 'Personal finance, with more clarity.', aboutTitle: 'Built independently. Made with intention.', tourCaption: 'Explore the CashNote desktop experience.' , media: {} };
-fs.mkdirSync(MEDIA_DIR, { recursive: true });
-function readContent() {
-  try { const value = JSON.parse(fs.readFileSync(CONTENT_FILE, 'utf8')); return { ...defaultContent, ...value, media: { ...defaultContent.media, ...(value.media || {}) } }; }
-  catch (_) { return { ...defaultContent }; }
-}
-function writeContent(value) { const temp = `${CONTENT_FILE}.${process.pid}.tmp`; fs.writeFileSync(temp, JSON.stringify(value, null, 2), { mode: 0o600 }); fs.renameSync(temp, CONTENT_FILE); }
+const cmsStore = createCmsStore({
+  owner: process.env.CMS_GITHUB_OWNER || 'Muhammad5231',
+  repo: process.env.CMS_GITHUB_REPO || 'CashNote-Website',
+  branch: process.env.CMS_GITHUB_BRANCH || 'main',
+  contentPath: process.env.CMS_CONTENT_PATH || 'public/cms/content.json',
+  token: process.env.CMS_GITHUB_TOKEN || ''
+});
 function safeEqual(a, b) { const aa = Buffer.from(String(a)); const bb = Buffer.from(String(b)); return aa.length === bb.length && crypto.timingSafeEqual(aa, bb); }
 function sign(value) { return crypto.createHmac('sha256', SESSION_SECRET).update(value).digest('hex'); }
 function sessionCookie(req) { return String(req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith('cashnote_admin='))?.slice('cashnote_admin='.length) || ''; }
@@ -48,7 +45,9 @@ function adminCookie(req, value, maxAge = SESSION_TTL_MS / 1000) {
 function isSameOrigin(req) {
   const origin = req.headers.origin;
   if (!origin) return true;
-  try { const u = new URL(origin); return u.host === (req.headers.host || '') || ALLOWED_ORIGINS.includes(origin); } catch (_) { return false; }
+  // The Admin Panel is served from this API origin. Do not allow the public
+  // static-site origin to make credentialed admin mutations cross-origin.
+  try { const u = new URL(origin); return u.host === (req.headers.host || ''); } catch (_) { return false; }
 }
 function readBody(req, limit = 1024 * 1024) {
   return new Promise((resolve, reject) => {
@@ -59,7 +58,6 @@ function readBody(req, limit = 1024 * 1024) {
   });
 }
 function adminRequired(req, res) { if (!validSession(req)) { sendJson(res, 401, { error: 'Your admin session has expired. Please sign in again.' }); return false; } return true; }
-function safeMediaName(name) { return /^[a-f0-9-]{36}\.(?:jpg|png|webp|mp4|webm)$/.test(name); }
 
 let snapshotCache = { expiresAt: 0, value: null };
 let snapshotPromise = null;
@@ -214,7 +212,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && url.pathname === '/health') {
-    return sendJson(res, 200, { ok: true, service: 'cashnote-download-gateway' });
+    return sendJson(res, 200, { ok: true, service: 'cashnote-download-gateway', cms: cmsStore.status() });
   }
   if (req.method === 'GET' && (url.pathname === '/admin' || url.pathname === '/admin/')) {
     const file = path.join(__dirname, 'admin-ui', 'index.html');
@@ -229,26 +227,18 @@ const server = http.createServer(async (req, res) => {
     return res.end(body);
   }
 
+  // Compatibility endpoint for older frontends. Current public pages read /cms/content.json
+  // from the Render Static Site, so they do not depend on a sleeping API service.
   if (req.method === 'GET' && url.pathname === '/api/site-content') {
-    const content = readContent();
-    return sendJson(res, 200, { ...content, media: Object.fromEntries(Object.entries(content.media || {}).map(([k, v]) => [k, v])) });
-  }
-
-  if (req.method === 'GET' && url.pathname.startsWith('/media/')) {
-    const name = path.basename(url.pathname.slice('/media/'.length));
-    if (!safeMediaName(name)) { res.writeHead(404); return res.end(); }
-    const file = path.join(MEDIA_DIR, name);
-    if (!fs.existsSync(file)) { res.writeHead(404); return res.end(); }
-    const ext = path.extname(name).toLowerCase();
-    const type = ({ '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.mp4': 'video/mp4', '.webm': 'video/webm' })[ext];
-    res.writeHead(200, { 'Content-Type': type, 'Content-Length': fs.statSync(file).size, 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' });
-    return fs.createReadStream(file).pipe(res);
+    try { const { content } = await cmsStore.getContent(); return sendJson(res, 200, content); }
+    catch (error) { return sendJson(res, error.status || 503, { error: error.message || 'Website content is temporarily unavailable.' }); }
   }
 
   if (url.pathname.startsWith('/api/admin/')) {
     if (!isSameOrigin(req)) return sendJson(res, 403, { error: 'Request origin is not allowed.' });
     if (req.method === 'POST' && url.pathname === '/api/admin/login') {
       if (ADMIN_PASSWORD.length < 16 || SESSION_SECRET.length < 32) return sendJson(res, 503, { error: 'Admin is not securely configured. Set an ADMIN_PASSWORD of at least 16 characters and an ADMIN_SESSION_SECRET of at least 32 characters in Render.' });
+      if (!cmsStore.status().configured) return sendJson(res, 503, { error: 'The GitHub CMS is not configured. Add CMS_GITHUB_TOKEN in the Render API Environment before signing in.' });
       const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
       const attempt = loginAttempts.get(ip) || { count: 0, until: 0 };
       if (attempt.until > Date.now()) return sendJson(res, 429, { error: 'Too many attempts. Try again in 15 minutes.' });
@@ -267,28 +257,21 @@ const server = http.createServer(async (req, res) => {
       res.setHeader('Set-Cookie', adminCookie(req, '', 0)); return sendJson(res, 200, { ok: true });
     }
     if (!adminRequired(req, res)) return;
-    if (req.method === 'GET' && url.pathname === '/api/admin/content') return sendJson(res, 200, { content: readContent() });
-    if (req.method === 'GET' && url.pathname === '/api/admin/backup') return sendJson(res, 200, { schemaVersion: 1, exportedAt: new Date().toISOString(), content: readContent() });
+    if (req.method === 'GET' && url.pathname === '/api/admin/content') {
+      try { const data = await cmsStore.getContent(); return sendJson(res, 200, { content: data.content, repository: cmsStore.status() }); }
+      catch (error) { return sendJson(res, error.status || 503, { error: error.message || 'Could not load website content from GitHub.' }); }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/admin/backup') {
+      try { const data = await cmsStore.getContent(); return sendJson(res, 200, { schemaVersion: 2, exportedAt: new Date().toISOString(), content: data.content, repository: cmsStore.status() }); }
+      catch (error) { return sendJson(res, error.status || 503, { error: error.message || 'Could not create a content backup.' }); }
+    }
     if (req.method === 'PUT' && url.pathname === '/api/admin/content') {
       let body; try { body = JSON.parse((await readBody(req, 32 * 1024)).toString('utf8')); } catch (_) { return sendJson(res, 400, { error: 'Invalid content payload.' }); }
-      const allowed = ['heroTitle', 'heroAccent', 'heroCopy', 'featuresTitle', 'aboutTitle', 'tourCaption'];
-      const current = readContent();
-      for (const key of allowed) if (typeof body.content?.[key] === 'string') current[key] = body.content[key].trim().slice(0, key === 'heroCopy' ? 500 : 220);
-      writeContent(current); return sendJson(res, 200, { ok: true });
+      try { const result = await cmsStore.saveContent(body.content); return sendJson(res, 200, result); }
+      catch (error) { return sendJson(res, error.status || 500, { error: error.message || 'Could not save website content.', code: error.code || 'CMS_ERROR' }); }
     }
     if (req.method === 'POST' && url.pathname === '/api/admin/upload') {
-      let body; try { body = JSON.parse((await readBody(req, 70 * 1024 * 1024)).toString('utf8')); } catch (_) { return sendJson(res, 400, { error: 'Invalid upload payload.' }); }
-      const kind = body.kind; const imageKinds = ['heroImage', 'galleryTransactions', 'galleryProfiles', 'galleryPreferences']; const allowedTypes = kind === 'tourVideo' ? ['video/mp4', 'video/webm'] : imageKinds.includes(kind) ? ['image/jpeg', 'image/png', 'image/webp'] : [];
-      const mime = String(body.mime || ''); if (!allowedTypes.includes(mime)) return sendJson(res, 415, { error: 'Unsupported file type.' });
-      const max = kind === 'tourVideo' ? 50 * 1024 * 1024 : 8 * 1024 * 1024;
-      let buffer; try { buffer = Buffer.from(String(body.data || ''), 'base64'); } catch (_) { return sendJson(res, 400, { error: 'Invalid file data.' }); }
-      if (!buffer.length || buffer.length > max) return sendJson(res, 413, { error: `File is empty or exceeds ${Math.round(max / 1024 / 1024)} MB.` });
-      const signatures = { 'image/png': buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])), 'image/jpeg': buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff, 'image/webp': buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP', 'video/mp4': buffer.toString('ascii', 4, 8) === 'ftyp', 'video/webm': buffer.subarray(0, 4).equals(Buffer.from([0x1a,0x45,0xdf,0xa3])) };
-      if (!signatures[mime]) return sendJson(res, 415, { error: 'File contents do not match the selected media type.' });
-      const ext = ({ 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'video/mp4': '.mp4', 'video/webm': '.webm' })[mime];
-      const filename = `${crypto.randomUUID()}${ext}`; fs.writeFileSync(path.join(MEDIA_DIR, filename), buffer, { flag: 'wx', mode: 0o644 });
-      const urlValue = `${PUBLIC_API_URL}/media/${filename}`; const content = readContent(); content.media = { ...(content.media || {}), [kind]: urlValue }; writeContent(content);
-      return sendJson(res, 201, { ok: true, url: urlValue });
+      return sendJson(res, 410, { error: 'Binary uploads are disabled. Add your file to public/assets/images or public/assets/videos in the GitHub repository, push it, then enter its /assets/... path in this Admin Panel.' });
     }
     return sendJson(res, 404, { error: 'Admin endpoint not found.' });
   }

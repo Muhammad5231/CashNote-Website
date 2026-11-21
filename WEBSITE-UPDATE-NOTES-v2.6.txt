@@ -1,0 +1,11 @@
+CASHNOTE WEBSITE v2.6 — ASSET-BASED CMS
+
+- Removed Render Persistent Disk requirement. API service can use Render Free.
+- Added public/assets/images and public/assets/videos for files manually committed with VS Code/Git.
+- Added public/cms/content.json for website copy and media paths.
+- Admin Panel edits text and paths only; no binary uploads.
+- Admin checks the asset path exists in GitHub before saving.
+- Save commits the CMS JSON through GitHub Contents API; Render Static Site redeploys from that commit.
+- Public pages read CMS JSON directly from the Static Site CDN.
+- GitHub Fine-grained token must be server-side in Render Environment and restricted to CashNote-Website with Contents read/write permission.
+- No database, Render disk or local API filesystem is used for durable content.

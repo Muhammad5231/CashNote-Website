@@ -1,108 +1,109 @@
-# CashNote Website v2.5 — Render Deployment Guide
+# CashNote Website v2.6 — Render Free + GitHub Assets CMS
 
-## What you are deploying
+## Architecture
 
-This Blueprint creates two Render services:
+This Blueprint keeps the public website static and crawlable. The Node API is a small stateless service for the Windows download gate, GitHub release statistics and authenticated Admin Panel.
 
-| Service | Render type | Purpose |
-|---|---|---|
-| `cashnote-website` | Static Site | Public pages, screenshots, SEO and mobile download guidance |
-| `cashnote-download-api` | Node Web Service | Device gate, latest installer redirect and GitHub download counter API |
+| Service | Render type | Plan | Purpose |
+|---|---|---|---|
+| `cashnote-website` | Static Site | Free | Public pages, SEO, product images/video and `public/cms/content.json` |
+| `cashnote-download-api` | Node Web Service | Free | Device-aware download redirect, release counter, admin login and GitHub CMS API proxy |
 
-Keeping the pages static means search engines can crawl the website without waiting for the API service to wake up.
+**No Persistent Disk or external database is used.** The Admin Panel writes text and media paths to `public/cms/content.json` in the `CashNote-Website` GitHub repository. Media binaries are added manually to `public/assets/` using VS Code/Git. The Render API holds no persistent CMS files.
 
-## Before you deploy: prepare GitHub Releases
+Render Free Web Services sleep after 15 minutes without inbound traffic; first wake-up may take about a minute. Static pages/assets remain served by the Render Static Site. See Render's Free service limitations: https://render.com/docs/free.
 
-Create a public releases repository. The default is `Muhammad5231/CashNote-Releases`; adjust `GITHUB_OWNER` and `GITHUB_REPO` in `render.yaml` if needed.
+## Existing repositories
 
-Publish a Release with a Windows installer asset named like:
+- Website source and CMS content: `Muhammad5231/CashNote-Website`
+- Installer releases/counter: `Muhammad5231/CashNote-Releases`
 
-`CashNote-Setup-1.9.7-Windows-x64.exe`
+## 1. Add GitHub content files
 
-The matching rule is `CashNote-Setup-*-Windows-x64.exe`. Keep release assets public so the gateway can resolve the public browser download URL and the website can read GitHub's official `download_count` metadata.
+The project includes `public/cms/content.json` and media folders:
 
-## Deploy with Render Blueprint
+- `public/assets/images/`
+- `public/assets/videos/`
+- `public/assets/screens/` (existing screenshots)
 
-1. Push the complete project folder to your website GitHub repository.
-2. In Render, choose **New → Blueprint**.
-3. Connect the website repository.
-4. Confirm the Blueprint sees `render.yaml` at the repository root.
-5. Deploy both services.
+Add image/video files to the repository with VS Code, then push them to the `main` branch. Example:
 
-### Static website service
-
-- Name: `cashnote-website`
-- Runtime: Static
-- Build command: `echo "CashNote website is ready to publish"`
-- Publish directory: `./public`
-
-### Download API service
-
-- Name: `cashnote-download-api`
-- Runtime: Node
-- Root directory: `api`
-- Build command: `echo "CashNote download gateway uses Node.js built-ins only"`
-- Start command: `npm start`
-- Health check: `/health`
-- Plan: Free
-
-## Set the API environment
-
-In Render, open `cashnote-download-api` → Environment. Confirm these values:
-
-```text
-GITHUB_OWNER=Muhammad5231
-GITHUB_REPO=CashNote-Releases
-SITE_URL=https://cashnote-website.onrender.com
-ALLOWED_ORIGINS=https://cashnote-website.onrender.com
-STATS_CACHE_SECONDS=180
+```bash
+git add public/assets
+ git commit -m "Add CashNote website media"
+git push origin main
 ```
 
-If you use a custom domain, update `SITE_URL`, add that exact `https://` origin to `ALLOWED_ORIGINS`, and update the `cashnote-download-api` meta tag on all three site pages if the API URL changes.
+The `public/cms/content.json` file contains site copy and the relative `/assets/...` paths. The Admin Panel edits this JSON file through GitHub; do not store binary uploads on the Render API.
 
-## Test the services
+## 2. Create a GitHub Fine-grained token for CMS writes
 
-1. Visit `/health` on the API. It should return `ok: true`.
-2. Visit `/api/download-stats`. It should report the total of matching installer asset download counts from published GitHub Releases.
-3. On a Windows PC, the website should enable the download CTA after the stats API confirms a matching installer asset.
-4. On a phone/tablet, the CTA should be disabled and a desktop-only explanation should appear.
-5. Test the API directly with a mobile User-Agent; `/download` should return HTTP 403 with a branded explanation.
-6. Test a normal Windows User-Agent; with a published installer, `/download` should redirect to the matching GitHub Release asset.
+Create a Fine-grained Personal Access Token with:
 
-## What the download number means
+- Owner: `Muhammad5231`
+- Repository access: only `CashNote-Website`
+- Repository permissions: `Contents` → **Read and write**
+- No Workflows permission required
 
-The number comes from GitHub's `download_count` field for matching release assets. It counts release asset downloads, including repeat downloads and downloads opened directly from GitHub. It does not show unique people, installs, first launches or downloads from this website alone. The counter sums matching assets across up to 100 latest published releases.
+Store the token only in the Render API environment as `CMS_GITHUB_TOKEN`. Never put it in the frontend or commit it to Git.
 
-The mobile gate applies to the CashNote website and its download gateway. Since the release repository is public, a direct GitHub asset URL can still be shared or opened outside the website; this is not DRM and cannot prevent a determined user from spoofing a User-Agent.
+## 3. Deploy the Blueprint
 
-## Free-tier cold starts
+1. Push the complete project to `Muhammad5231/CashNote-Website`.
+2. Render → New → Blueprint, or open your existing `CashNote-Website` Blueprint.
+3. Sync/apply the updated `render.yaml`.
+4. Confirm the Blueprint contains two services and **no disk resource**.
+5. Confirm `cashnote-download-api` is a Free Node Web Service with root directory `api`, start command `npm start` and health check `/health`.
+6. Deploy both services.
 
-Render Free Web Services spin down after 15 minutes of inactivity and can take around a minute to start. The static pages stay served by Render's CDN, but the stats/download API can be slow on its first request after idle time. The website retries the stats request while the API wakes up.
+The static site publishes `./public`. The API runs without third-party npm dependencies.
 
-## Google Search Console
+## 4. Configure Render Environment
 
-After the website's actual domain is live:
+Open `cashnote-download-api` → Environment and confirm:
 
-1. Add a URL-prefix property in Google Search Console.
-2. Verify with the HTML meta tag or DNS method supplied by Google.
-3. Submit `https://YOUR-DOMAIN/sitemap.xml`.
-4. Inspect the homepage, `/features/`, and `/about/` URLs.
+```text
+NODE_VERSION=22
+GITHUB_OWNER=Muhammad5231
+GITHUB_REPO=CashNote-Releases
+STATS_CACHE_SECONDS=180
+SITE_URL=https://cashnote-website.onrender.com
+ALLOWED_ORIGINS=https://cashnote-website.onrender.com
+CMS_GITHUB_OWNER=Muhammad5231
+CMS_GITHUB_REPO=CashNote-Website
+CMS_GITHUB_BRANCH=main
+CMS_CONTENT_PATH=public/cms/content.json
+CMS_GITHUB_TOKEN=<your fine-grained token>
+ADMIN_PASSWORD=<unique password, at least 16 characters>
+ADMIN_SESSION_SECRET=<random secret, at least 32 characters>
+```
 
-Sitemap submission does not guarantee indexing or a specific ranking position.
+Render generates `ADMIN_SESSION_SECRET` when using the Blueprint. Do not rotate it unless you intend to expire existing sessions. If you use a custom domain, add that exact HTTPS origin to `ALLOWED_ORIGINS` and change `SITE_URL`.
 
-## v2.2 design update (retained)
+No `CASHNOTE_DATA_DIR`, `PUBLIC_API_URL`, `disk:` resource or media upload directory is used in v2.6.
 
-The Home hero and Home “A closer look” section use original CSS/HTML illustrations rather than application screenshots. The creator/About page uses a stylized faceless illustration. Product screenshots remain on the Features page only. Scroll animations use GSAP 3.12.5 and ScrollTrigger from cdnjs, with a native IntersectionObserver fallback and `prefers-reduced-motion` support. No build step is required for the static website.
+## 5. Test after deployment
 
+1. `/health` on the API returns `ok: true` and a CMS configured status.
+2. `/cms/content.json` on the website returns the current public content JSON.
+3. `/api/download-stats` on the API returns the current GitHub Releases snapshot when releases are available.
+4. `/admin/` on the API shows the sign-in page.
+5. Sign in and verify that text and media paths load from GitHub.
+6. Add an image/video under `public/assets/`, push it to GitHub, wait for static deployment, then enter its `/assets/...` path in the Admin Panel.
+7. Saving Admin changes creates a commit in `CashNote-Website` and triggers the Render Static Site deployment.
+8. Test the Home, Features and About pages in desktop and mobile widths.
+9. Test `/download` with Windows and mobile User-Agents; mobile users must be rejected and Windows users redirected to the latest matching installer.
 
-## Website v2.4 product update (retained)
+## 6. Download counter and publishing
 
-The website now describes CashNote Desktop v1.9.7, including optional CashNote AI, guided Q&A for incomplete requests, user-confirmed proposals, five quick actions, and the CashNote-branded local data folder. It also explains that the AI provider receives prompts and relevant finance context only when the user invokes AI.
+The counter reads official GitHub Release asset `download_count` values for matching `CashNote-Setup-*-Windows-x64.exe` assets across up to 100 published releases. It is not a unique-user, install or first-launch count. Keep the `CashNote-Releases` repository public so website visitors and the gateway can access public release metadata.
 
-Before public promotion, make sure the tested `CashNote-Setup-1.9.7-Windows-x64.exe` is published as a public asset in the configured `CashNote-Releases` repository. The website API deliberately follows the latest published matching GitHub Release asset; it does not hard-code or fabricate a version. Until v1.9.7 is published there, the download CTA can resolve to the latest older published asset.
+## 7. Admin usage
 
-After pushing the website update, verify the Home, Features and About pages, check mobile download blocking, check `/api/download-stats`, and submit the updated sitemap in Google Search Console.
+The Admin Panel lives at `https://cashnote-download-api.onrender.com/admin/`. It edits only text and media paths. On Save, the API validates each path against the repository, then commits `public/cms/content.json` through GitHub Contents API. Render redeploys the static website from that commit. See `ADMIN-SETUP-GUIDE.md`.
 
+For video, use compressed MP4/WEBM stored in `public/assets/videos/`. For larger product tours, prefer an embedded YouTube video instead of a large Git binary.
 
-## Website admin and media CMS (v2.5)
-The API now serves the private admin at `https://cashnote-download-api.onrender.com/admin/` and stores editable copy plus uploaded screenshots/video on a Render Persistent Disk. Apply the updated `render.yaml`, set `ADMIN_PASSWORD` (minimum 16 characters), and keep `ADMIN_SESSION_SECRET` (minimum 32 characters) configured. See `ADMIN-SETUP-GUIDE.md`. The API service uses Render Starter + 1 GB disk so CMS edits survive redeploys; this is a paid Render resource. No separate database is used.
+## 8. Google Search Console
+
+After deploy, submit `https://cashnote-website.onrender.com/sitemap.xml` in Search Console and inspect the Home, Features and About URLs. Sitemap submission does not guarantee indexing or rank position.

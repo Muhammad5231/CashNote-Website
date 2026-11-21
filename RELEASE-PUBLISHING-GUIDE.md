@@ -25,4 +25,4 @@ Do not label the public counter as "installed users", "active users" or "people 
 
 ## CashNote v1.9.7 website alignment
 
-The v2.3 website describes product build v1.9.7. Before announcing the matching download, publish the tested `CashNote-Setup-1.9.7-Windows-x64.exe` asset under a public GitHub Release in `Muhammad5231/CashNote-Releases`. The download gateway reads GitHub's latest published matching asset dynamically. It will not serve the v1.9.7 installer until that asset is present and published.
+The v2.6 website describes product build v1.9.7. Before announcing the matching download, publish the tested `CashNote-Setup-1.9.7-Windows-x64.exe` asset under a public GitHub Release in `Muhammad5231/CashNote-Releases`. The download gateway reads GitHub's latest published matching asset dynamically. It will not serve the v1.9.7 installer until that asset is present and published.

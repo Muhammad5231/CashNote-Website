@@ -1,11 +1,12 @@
 {
   "name": "cashnote-download-gateway",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
-  "description": "CashNote Windows download gateway, GitHub release statistics and secure lightweight website CMS.",
+  "description": "CashNote Windows download gateway and GitHub-backed website content manager.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=22"

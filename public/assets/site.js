@@ -257,15 +257,23 @@
 })();
 
 
-  // Optional product video: when no uploaded clip exists, the animated CSS preview remains visible.
+  // Product video path comes from the public, GitHub-backed CMS JSON.
+  // No custom API or Render disk is required to display website media.
   (async () => {
     const frame = document.querySelector('[data-tour-frame]');
     const video = document.querySelector('[data-tour-video]');
     if (!frame || !video) return;
     try {
-      const response = await fetch(`${apiBase}/api/site-content`, { cache: 'no-store' });
+      const response = await fetch('/cms/content.json', { cache: 'no-store' });
       if (!response.ok) return;
       const content = await response.json();
-      if (content.media?.tourVideo) { video.src = content.media.tourVideo; video.hidden = false; frame.querySelector('.tour-ambient')?.setAttribute('hidden',''); frame.querySelector('.tour-caption')?.setAttribute('hidden',''); }
+      const videoPath = content.media?.tourVideo;
+      if (typeof videoPath === 'string' && videoPath.startsWith('/assets/videos/') && !/[\\?#%\u0000-\u001f]/.test(videoPath) && !videoPath.includes('..') && /\.(mp4|webm)$/i.test(videoPath)) {
+        video.src = videoPath;
+        if (content.media?.heroImage) video.poster = content.media.heroImage;
+        video.hidden = false;
+        frame.querySelector('.tour-ambient')?.setAttribute('hidden', '');
+        frame.querySelector('.tour-caption')?.setAttribute('hidden', '');
+      }
     } catch (_) { /* Motion preview is the intentional offline fallback. */ }
   })();

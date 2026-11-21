@@ -1,0 +1,15 @@
+{
+  "heroTitle": "Your money,",
+  "heroAccent": "in focus.",
+  "heroCopy": "A more considered way to manage everyday money. Track income and expenses, plan budgets, reuse common entries and review reports — with your records kept on your computer.",
+  "featuresTitle": "Personal finance, with more clarity.",
+  "aboutTitle": "Built independently. Made with intention.",
+  "tourCaption": "Explore the CashNote desktop experience.",
+  "media": {
+    "heroImage": "",
+    "tourVideo": "",
+    "galleryTransactions": "/assets/screens/transactions.webp",
+    "galleryProfiles": "/assets/screens/account-picker.webp",
+    "galleryPreferences": "/assets/screens/preferences.webp"
+  }
+}

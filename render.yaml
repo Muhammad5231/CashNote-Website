@@ -5,6 +5,9 @@ services:
     buildCommand: echo "CashNote website is ready to publish"
     staticPublishPath: ./public
     headers:
+      - path: /cms/content.json
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
       - path: /*
         name: X-Content-Type-Options
         value: nosniff
@@ -25,12 +28,8 @@ services:
     name: cashnote-download-api
     runtime: node
     rootDir: api
-    plan: starter
-    disk:
-      name: cashnote-site-content
-      mountPath: /var/data
-      sizeGB: 1
-    buildCommand: echo "CashNote download gateway uses Node.js built-ins only"
+    plan: free
+    buildCommand: echo "CashNote API uses Node.js built-ins only"
     startCommand: npm start
     healthCheckPath: /health
     envVars:
@@ -46,10 +45,16 @@ services:
         value: https://cashnote-website.onrender.com
       - key: ALLOWED_ORIGINS
         value: https://cashnote-website.onrender.com,http://localhost:8080
-      - key: PUBLIC_API_URL
-        value: https://cashnote-download-api.onrender.com
-      - key: CASHNOTE_DATA_DIR
-        value: /var/data/cashnote-site
+      - key: CMS_GITHUB_OWNER
+        value: Muhammad5231
+      - key: CMS_GITHUB_REPO
+        value: CashNote-Website
+      - key: CMS_GITHUB_BRANCH
+        value: main
+      - key: CMS_CONTENT_PATH
+        value: public/cms/content.json
+      - key: CMS_GITHUB_TOKEN
+        sync: false
       - key: ADMIN_PASSWORD
         sync: false
       - key: ADMIN_SESSION_SECRET
